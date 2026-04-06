@@ -3,49 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistema CAD Avançado - Web</title>
+    <title>CAD Sênior - Área Gourmet & Varejo Realista</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script async src="https://docs.opencv.org/4.5.0/opencv.js" type="text/javascript"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+
+    <script async src="https://docs.opencv.org/4.8.0/opencv.js" type="text/javascript"></script>
 </head>
 <body>
     <header class="app-header" id="mainHeader">
-        <h1><i class="fas fa-cube"></i> <span class="brand">CAD System</span> | Produção & AR</h1>
-        <div style="display:flex; gap:10px;">
-            <input type="file" id="fotoAmbiente" accept="image/*" style="display:none;">
-            <button class="tool-btn" onclick="document.getElementById('fotoAmbiente').click()"><i class="fas fa-camera"></i> Subir Foto Real</button>
-            <button class="tool-btn action-btn" onclick="window.App.ui.exportProject()"><i class="fas fa-download"></i> Exportar Projeto</button>
-        </div>
+        <h1><i class="fas fa-cube"></i> <span class="brand">CAD Pro</span> | Produção Sênior Realista</h1>
+        <button class="icon-btn" onclick="window.App.ui.toggleModal('modalSettings')"><i class="fas fa-sliders-h"></i></button>
     </header>
 
+    <div class="footer-signature" id="mainSignature">ENGINE: PBR ACES + VISÃO COMPUTACIONAL + NESTING CNC</div>
+
     <div class="top-tools" id="toolModeContainer">
-        <button class="tool-btn active" id="btnOrbit" onclick="window.App.setMode('orbit')"><i class="fas fa-eye"></i> Orbitar</button>
-        <button class="tool-btn" id="btnMove" onclick="window.App.setMode('move')"><i class="fas fa-arrows-alt"></i> Mover Móvel</button>
+        <button class="tool-btn active" id="btnOrbit" onclick="window.App.ar.setModoCamera('orbit')"><i class="fas fa-hand-pointer"></i> <span>Tocar & Abrir</span></button>
+        <button class="tool-btn" id="btnMove" onclick="window.App.ar.setModoCamera('move')"><i class="fas fa-magnet"></i> <span>Mover & Colar</span></button>
+        <button class="tool-btn" id="btnAddComp" onclick="window.App.ar.setModoCamera('add_comp')"><i class="fas fa-plus"></i> <span>Inserir Clique</span></button>
+        <button class="tool-btn eraser" id="btnRemComp" onclick="window.App.ar.setModoCamera('remove_part')"><i class="fas fa-eraser"></i> <span>Ocultar Peça</span></button>
     </div>
 
-    <div id="canvas-container">
-        <canvas id="cad-canvas"></canvas>
+    <div id="canvas-container"><canvas id="cad-canvas"></canvas></div>
+    <div id="longPressIndicator"></div>
+
+    <button id="btnExitPrint" onclick="window.App.ar.exitPrintMode()">SAIR DO MODO DE FOTOGRAFIA</button>
+
+    <div class="floating-controls" id="mainControls">
+        <button class="fab-btn primary" onclick="window.App.ui.abrirHUD('hudIA')"><i class="fas fa-brain"></i><span>Sênior IA</span></button>
+        <button class="fab-btn" onclick="window.App.ui.abrirHUD('hudLista')"><i class="fas fa-cubes"></i><span>Projeto 3D</span></button>
+        <button class="fab-btn" onclick="window.App.ui.abrirHUD('perspectiveHUD')"><i class="fas fa-vr-cardboard"></i><span>Estúdio AR</span></button>
+        <button class="fab-btn success" onclick="window.App.ui.abrirHUD('hudOrcamento')"><i class="fas fa-file-invoice-dollar"></i><span>Corte/BOM</span></button>
     </div>
 
-    <div class="bottom-sheet active" id="painelIA">
-        <div class="sheet-header">
-            <h3><i class="fas fa-robot"></i> Inteligência e Criação</h3>
-        </div>
+    <div id="hudIA" class="bottom-sheet">
+        <div class="sheet-header"><h3><i class="fas fa-robot"></i> Generativo (Voz & Visão)</h3><button class="close-btn" onclick="window.App.ui.fecharHUDs()">×</button></div>
         <div class="sheet-body">
-            <textarea id="textoProjeto" placeholder="Ex: Crie um balcão curvo de 2000x1100x500 e um armário aéreo de 1000x600x300..."></textarea>
-            <button class="tool-btn action-btn" onclick="window.App.gerarViaTexto()"><i class="fas fa-magic"></i> Gerar Projeto</button>
-            <button class="tool-btn success" style="margin-top:10px;" onclick="window.App.gerarProducao()"><i class="fas fa-industry"></i> Gerar Plano de Corte (Nesting)</button>
-            <div id="cutPlanResult" style="margin-top: 15px;"></div>
+            <div class="grid-2-col">
+                <button class="btn-block primary" id="btnRecord" onclick="window.InterpreterEngine.toggleRecording()"><i class="fas fa-microphone"></i> Gravar Voz</button>
+                <div class="input-group" style="margin: 0;"><input type="file" id="audioFile" accept="audio/*" style="display:none;" onchange="window.InterpreterEngine.uploadAudio(this)"><label for="audioFile" class="btn-block" style="background:#546e7a; color:#fff; cursor:pointer; margin:0;"><i class="fas fa-upload"></i> Subir Áudio</label></div>
+            </div>
+            <p id="transcriptionText" style="font-size:0.9rem; color:var(--success-green); font-weight:800; text-align:center; margin:15px 0;"></p>
+            <div class="input-group"><label>Prompt de Arquitetura (Gourmet/Varejo)</label><textarea id="textoAdicional" placeholder="Ex: 'Montar área gourmet com churrasqueira de tijolo escuro, deck de madeira, pergolado metálico e balcão de concreto'"></textarea></div>
+            <div class="input-group"><input type="file" id="fotoCliente" accept="image/*" style="display:none;" onchange="window.App.processGlobalPhoto(this)"><label for="fotoCliente" class="btn-block action-btn" style="margin:0; cursor:pointer;"><i class="fas fa-camera"></i> Anexar Foto do Terreno/Sala</label></div>
+            <div id="imgPreviewContainer"><img id="imagePreview" src=""></div>
+            <button class="btn-block success" style="margin-top:25px; padding:20px; font-size:1.1rem;" onclick="window.InterpreterEngine.generateWithOracle()"><i class="fas fa-magic"></i> Computar Geometria 3D</button>
         </div>
     </div>
 
-    <script src="interpreter.js"></script>
+    <div id="hudLista" class="bottom-sheet">
+        <div class="sheet-header"><h3><i class="fas fa-list"></i> Engenharia da Cena</h3><button class="close-btn" onclick="window.App.ui.fecharHUDs()">×</button></div>
+        <div class="sheet-body">
+            <p style="font-size: 0.9rem; color: #555; margin-bottom:20px; text-align:center; font-weight:700;"><i class="fas fa-hand-pointer"></i> Segure o dedo sobre a peça no 3D para editar a engenharia.</p>
+            <div id="listaModulosContainer"></div>
+            <button class="btn-block primary" style="margin-top:20px;" onclick="window.App.modules.addGeneric()"><i class="fas fa-plus"></i> Inserir Módulo Paramétrico</button>
+            <button class="btn-block action-btn" style="margin-top:10px;" onclick="window.App.modules.exportarProjeto()"><i class="fas fa-file-export"></i> Exportar Projeto JSON</button>
+            <div id="cutPlanContainer" style="margin-top: 20px; display: none;"></div>
+            <button class="btn-block success" style="margin-top:10px;" onclick="window.App.modules.gerarPlanoCorte()"><i class="fas fa-border-all"></i> Plano de Corte (Nesting)</button>
+            <button class="btn-block danger" style="margin-top:10px;" onclick="window.ExportEngine.exportDXF()"><i class="fas fa-download"></i> Exportar DXF CNC</button>
+        </div>
+    </div>
+
+    <div id="perspectiveHUD" class="bottom-sheet">
+        <div class="sheet-header"><h3><i class="fas fa-camera"></i> Estúdio AR & Tracking</h3><button class="close-btn" onclick="window.App.ui.fecharHUDs()">×</button></div>
+        <div class="sheet-body">
+            <div class="switch-container"><div class="switch-btn" id="sw-peca" onclick="window.App.ar.setModoInteracao('peca')">Mover Peça (Snap)</div><div class="switch-btn active" id="sw-projeto" onclick="window.App.ar.setModoInteracao('projeto')">Calibrar Quarto</div></div>
+            <button class="btn-block primary" onclick="window.App.ar.toggleAR()"><i class="fas fa-image"></i> <span id="arBtnText">Ativar Fundo Real Fotográfico</span></button>
+            <input type="file" id="fotoFundoAR" accept="image/*" style="display:none;" onchange="window.App.processGlobalPhoto(this)">
+            <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #ccc;"><h4 style="font-size: 0.9rem; color: var(--secondary-wood); margin-bottom: 10px; font-weight: 800;">1. Limites Físicos (mm)</h4><div class="input-group"><label>Largura</label><input type="number" id="roomW" value="5000" onchange="window.App.ar.syncRoomBounds()"></div><div class="input-group"><label>Profundidade</label><input type="number" id="roomD" value="8000" onchange="window.App.ar.syncRoomBounds()"></div></div>
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;"><h4 style="font-size: 0.9rem; color: var(--secondary-wood); margin-bottom: 10px; font-weight: 800;">2. Transformada da Lente</h4><div class="input-group"><label>Escala</label><input type="range" id="camScale" min="0.1" max="5" step="0.05" value="1" oninput="window.App.ar.applyTransform()"></div><div class="input-group"><label>Offset Y</label><input type="range" id="camPosY" min="-10" max="10" step="0.1" value="0" oninput="window.App.ar.applyTransform()"></div><div class="input-group"><label>Pitch (X)</label><input type="range" id="camRotX" min="-1.5" max="1.5" step="0.01" value="0" oninput="window.App.ar.applyTransform()"></div><div class="input-group"><label>Yaw (Y)</label><input type="range" id="camRotY" min="-3.14" max="3.14" step="0.05" value="0" oninput="window.App.ar.applyTransform()"></div></div>
+            <div class="grid-2-col" style="margin-top:30px;"><button class="btn-block success" onclick="window.App.ar.enterPrintMode()"><i class="fas fa-camera"></i> Ocultar UI</button><button class="btn-block danger" onclick="window.App.ar.resetAR()"><i class="fas fa-undo"></i> Resetar</button></div>
+        </div>
+    </div>
+
+    <div id="hudOrcamento" class="bottom-sheet">
+        <div class="sheet-header"><h3><i class="fas fa-calculator"></i> Custos & BOM Industrial</h3><button class="close-btn" onclick="window.App.ui.fecharHUDs()">×</button></div>
+        <div class="sheet-body">
+            <div class="price-summary"><h4>Valor Sugerido</h4><p id="bom-price">R$ 0,00</p></div>
+            <div class="grid-2-col">
+                <div class="input-group"><label>Material M²</label><input type="number" id="cost-mdf" value="120.00" onchange="window.BOMEngine.updateParams()"></div>
+                <div class="input-group"><label>M. Obra M²</label><input type="number" id="cost-labor" value="95.00" onchange="window.BOMEngine.updateParams()"></div>
+                <div class="input-group"><label>Hardware (R$)</label><input type="number" id="cost-hardware" value="0.00" onchange="window.BOMEngine.updateParams()"></div>
+                <div class="input-group"><label>Markup (%)</label><input type="number" id="cost-margin" value="50" onchange="window.BOMEngine.updateParams()"></div>
+            </div>
+            <div class="bom-detail"><span>Área Bruta Físico:</span><span id="bom-area" style="color:var(--primary-dark);">0.00 m²</span></div>
+            <div class="bom-detail"><span>Ferragens Lógicas:</span> <div style="text-align: right;"><span id="bom-hw-cost" style="color:var(--primary-dark);">R$ 0,00</span><div class="bom-hardware-list" id="bom-hw-list">Nenhuma ferragem.</div></div></div>
+            <div class="bom-detail"><span>Custos Materiais Total:</span><span id="bom-mat" style="color:var(--primary-dark);">R$ 0,00</span></div>
+            <div class="bom-detail"><span>Custo Fabril:</span><span id="bom-mobra" style="color:var(--primary-dark);">R$ 0,00</span></div>
+            <div class="bom-detail" style="color:var(--success-green); border-top: 3px dashed #E0E0E0; padding-top:15px; margin-top: 15px;"><span>Lucro Estimado:</span><span id="bom-profit">R$ 0,00</span></div>
+        </div>
+    </div>
+
+    <div id="floatingEditor" class="floating-editor">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 3px solid var(--border-soft); padding-bottom:15px; margin-bottom:20px;"><h4 style="color:var(--ai-blue); font-size:1.1rem; font-weight:900; text-transform: uppercase;"><i class="fas fa-tools"></i> Engenharia da Peça</h4><button class="close-btn" style="background:var(--warning-red); color:white;" onclick="window.App.ui.fecharEditor()">×</button></div>
+        <input type="hidden" id="eId">
+        <div class="input-group"><label>Tipologia & Formato</label><div class="grid-2-col">
+            <select id="eT" onchange="window.App.ui.syncToState()">
+                <option value="churrasqueira_tijolo">Área Externa - Churrasqueira Refratária</option>
+                <option value="deck_madeira">Área Externa - Deck de Madeira</option>
+                <option value="pergolado_metalico">Área Externa - Pergolado Metálico</option>
+                <option value="jardim_vertical">Área Externa - Painel Jardim Vertical</option>
+                <option value="balcao_concreto">Mobiliário - Balcão Base/Concreto</option>
+                <option value="balcao_curvo">Mobiliário - Balcão Curvo Orgânico</option>
+                <option value="mesa_macica">Mobiliário - Mesa Maciça Gourmet</option>
+                <option value="armario">Marcenaria - Armário/Aéreo</option>
+                <option value="guarda_roupa">Marcenaria - Roupeiro</option>
+                <option value="painel_tv">Marcenaria - Painel TV</option>
+                <option value="expositor_oculos_inclinado">Varejo - Expositor Óculos Premium</option>
+                <option value="expositor_oculos_hexagonal">Varejo - Ilha Hexagonal</option>
+                <option value="expositor_oculos_chillibeans">Varejo - Ilha Central Pórtico</option>
+                <option value="parede_otica">Varejo - Parede Mercadão</option>
+                <option value="balcao_mercadao">Varejo - Balcão Caixa Comercial</option>
+                <option value="totem_iluminado_otica">Varejo - Totem Iluminado</option>
+                <option value="expositor_degraus">Varejo - Expositor Fini (Degraus)</option>
+                <option value="sofa">Estofado - Sofá/Poltrona</option>
+                <option value="cadeira">Estofado - Cadeira</option>
+                <option value="porta_avulsa">Avulso - Porta</option>
+                <option value="gaveta_avulsa">Avulso - Gaveta</option>
+            </select>
+            <select id="eFormato" onchange="window.App.ui.syncToState()"><option value="reto">Reto (Padrão)</option><option value="L_esq">Módulo em L (Retorno Esquerdo)</option><option value="L_dir">Módulo em L (Retorno Direito)</option><option value="canto_obliquo">Canto Oblíquo</option><option value="canto_curvo">Canto Curvo</option><option value="redondo">Redondo/Cilíndrico</option><option value="triangular">Triangular</option><option value="dobravel">Dobrável</option></select>
+        </div></div>
+        <div class="input-group"><label>Shaders Físicos (PBR) & Aberturas</label><div class="grid-2-col">
+            <select id="eMat" onchange="window.App.ui.syncToState()">
+                <option value="concreto_aparente">Concreto Aparente / Cimento Queimado</option>
+                <option value="madeira_deck">Madeira Cumaru (Deck/Mesa)</option>
+                <option value="tijolo_refratario">Tijolo Refratário Escuro</option>
+                <option value="metal_pergolado">Metalon Preto Fosco</option>
+                <option value="folhagem">Folhagem / Jardim Vertical</option>
+                <option value="mdf_branco_diamante">MDF Branco Diamante (Brilho)</option>
+                <option value="amadeirado_claro">MDF Madeira Clara</option>
+                <option value="amadeirado_padrao">MDF Amadeirado Escuro</option>
+                <option value="mdf_vermelho_mercadao">MDF Vermelho Mercadão (Brilho)</option>
+                <option value="mdf_azul_mercadao">MDF Azul Mercadão</option>
+                <option value="mdf_preto_tx">MDF Preto TX / Granito Nero</option>
+                <option value="misto">Misto (Caixa Branca, Frente Cor)</option>
+                <option value="vidro_incolor">Vidro Incolor 8mm</option>
+                <option value="tecido_linho_cinza">Tecido Linho Cinza Exterior</option>
+            </select>
+            <select id="eA" onchange="window.App.ui.syncToState()"><option value="giro">Dobradiça (Giro)</option><option value="correr">Trilho (Correr)</option><option value="basculante">Basculante (Cima)</option></select>
+        </div></div>
+        <div class="input-group"><label>Arranjo Interno Paramétrico</label><div class="grid-2-col">
+            <select id="eLayoutInt" onchange="window.App.ui.syncToState()"><option value="apenas_portas">Volume Total p/ Portas</option><option value="apenas_gavetas">Volume Total p/ Gavetas</option><option value="top_drawers">Misto: Gavetas no Topo</option><option value="bottom_drawers">Misto: Gavetas na Base</option><option value="left_drawers">Misto: Gavetas à Esq.</option><option value="right_drawers">Misto: Gavetas à Dir.</option><option value="gavetas_internas">Gavetas Embutidas</option><option value="ilha_dupla">Ilha Dupla (Frente/Trás)</option></select>
+            <select id="eDobradica" onchange="window.App.ui.syncToState()"><option value="esq">Pivot Lado Esquerdo</option><option value="dir">Pivot Lado Direito</option></select>
+        </div></div>
+        <div class="input-group"><label>Opcionais de Estrutura</label><div class="grid-2-col"><label class="checkbox-group"><input type="checkbox" id="eRipado" onchange="window.App.ui.syncToState()"> Ripado Frontal/Decking</label><label class="checkbox-group"><input type="checkbox" id="eVidro" onchange="window.App.ui.syncToState()"> Tampo Pedra/Vidro Superior</label><label class="checkbox-group"><input type="checkbox" id="eFrentesInternas" onchange="window.App.ui.syncToState()"> Portas Lado Interno (L)</label></div></div>
+        <div class="input-group"><label>Divisões Físicas</label><div class="grid-4-col"><div><label>Portas</label><input type="number" id="ePo" oninput="window.App.ui.syncToState()"></div><div><label>Gavetas</label><input type="number" id="eG" oninput="window.App.ui.syncToState()"></div><div><label>Prat. In</label><input type="number" id="ePr" oninput="window.App.ui.syncToState()"></div><div><label>Prat. Ex / Vãos</label><input type="number" id="ePratExt" oninput="window.App.ui.syncToState()"></div></div></div>
+        <div class="input-group"><label style="color:var(--ai-blue);">Tamanho Fixo Frentes (mm)</label><div class="grid-2-col"><input type="number" id="eCompW" placeholder="Largura Livre (0=Auto)" oninput="window.App.ui.syncToState()"><input type="number" id="eCompH" placeholder="Altura Livre (0=Auto)" oninput="window.App.ui.syncToState()"></div></div>
+        <div class="input-group"><label style="color:var(--ai-blue);"><i class="fas fa-paint-roller"></i> Pintura Individual Mapeada</label><div id="customFrentesContainer" style="background:#f5f5f5; padding:15px; border-radius:8px; border:1px solid #ddd; max-height:250px; overflow-y:auto;"></div></div>
+        <div class="input-group"><label>Geometria (mm)</label><div class="grid-4-col"><div><label>Largura</label><input type="number" id="eL" oninput="window.App.ui.syncToState()"></div><div><label>Altura</label><input type="number" id="eAl" oninput="window.App.ui.syncToState()"></div><div><label>Profund.</label><input type="number" id="eP" oninput="window.App.ui.syncToState()"></div><div><label>Retorno/L</label><input type="number" id="eRetL" oninput="window.App.ui.syncToState()"></div></div></div>
+        <div class="input-group"><label>Vetor Translação Absoluta</label><div class="grid-4-col"><div><label>X</label><input type="number" id="ePx" oninput="window.App.ui.syncToState()"></div><div><label>Y</label><input type="number" id="ePy" oninput="window.App.ui.syncToState()"></div><div><label>Z</label><input type="number" id="ePz" oninput="window.App.ui.syncToState()"></div><div><label>Yaw (Rot)</label><input type="number" id="eRy" oninput="window.App.ui.syncToState()"></div></div></div>
+        <button class="btn-block danger" style="margin-top: 30px; padding: 20px; font-size:1.1rem;" onclick="window.App.modules.removeCurrent()"><i class="fas fa-trash-alt"></i> Destruir Nó de Cena</button>
+    </div>
+
+    <div id="modalSettings" class="modal-overlay">
+        <div class="modal-content"><h2 style="color:var(--primary-dark); margin-bottom:20px; font-size:1.3rem;"><i class="fas fa-cogs"></i> Tokens API Externas</h2><div class="input-group mb-2"><label>Gemini 2.5 Flash / Pro</label><input type="password" id="api-gemini" placeholder="AIzaSy..."></div><div class="input-group mb-2"><label>Groq Whisper</label><input type="password" id="api-groq" placeholder="gsk_..."></div><div class="grid-2-col" style="margin-top:25px;"><button class="btn-block" onclick="window.App.ui.toggleModal('modalSettings')">Cancelar</button><button class="btn-block success" onclick="window.App.api.saveKeys()">Gravar Keys</button></div></div>
+    </div>
+    <div id="statusOverlay" class="status-overlay"><div style="display:flex; flex-direction:column; align-items:center;"><div class="loader"></div><p id="statusText">Aguarde...</p></div></div>
+    <div id="toast"><i class="fas fa-info-circle"></i> <span id="toastMessage"></span></div>
+
     <script src="cv.js"></script>
+    <script src="interpreter.js"></script>
     <script src="modules.js"></script>
     <script src="app.js"></script>
 </body>
