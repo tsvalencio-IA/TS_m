@@ -1,53 +1,43 @@
-/**
- * Módulo de Visão Computacional (OpenCV.js)
- * Analisa a imagem para detectar as linhas do ambiente e estimar a perspectiva.
- */
 window.CVEngine = {
-    analisarAmbiente: async (imageElement) => {
-        return new Promise((resolve, reject) => {
-            if (typeof cv === 'undefined') {
-                console.warn("OpenCV.js não carregado. Retornando dimensões padrão.");
-                return resolve({ w: 5000, d: 5000, linhasPerspectiva: [] });
-            }
-            try {
-                // 1. Carrega a imagem no OpenCV
-                let mat = cv.imread(imageElement);
-                let gray = new cv.Mat();
-                let edges = new cv.Mat();
-                let lines = new cv.Mat();
-                
-                // 2. Pré-processamento
-                cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY, 0);
-                cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0, cv.BORDER_DEFAULT);
-                
-                // 3. Detecção de Bordas (Canny)
-                cv.Canny(gray, edges, 50, 150, 3);
-                
-                // 4. Transformada de Hough para encontrar retas principais (paredes/chão)
-                cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 50, 50, 10);
-                
-                let detectedLines = [];
-                for (let i = 0; i < lines.rows; ++i) {
-                    let p = lines.data32S;
-                    detectedLines.push({ x1: p[i*4], y1: p[i*4+1], x2: p[i*4+2], y2: p[i*4+3] });
-                }
-
-                // 5. Limpeza de memória do WASM
-                mat.delete(); gray.delete(); edges.delete(); lines.delete();
-                
-                console.log("Linhas detectadas via OpenCV:", detectedLines.length);
-                
-                // Retorna as dimensões estimadas baseadas na proporção da imagem (Simplificação para Web)
-                // Num ambiente real, cruzaríamos as linhas convergentes para achar o ponto de fuga.
-                resolve({
-                    w: imageElement.width * 5, // Escala estimada
-                    d: imageElement.height * 5,
-                    linhasPerspectiva: detectedLines
-                });
-            } catch (error) {
-                console.error("Erro no CV Engine:", error);
-                resolve({ w: 5000, d: 5000, linhasPerspectiva: [] });
-            }
-        });
+    processarImagemUpload: async (input) => {
+        if (!input.files || !input.files[0]) return;
+        const url = URL.createObjectURL(input.files[0]);
+        const img = new Image(); img.src = url;
+        
+        img.onload = () => {
+            const container = document.getElementById('canvas-container');
+            container.style.backgroundImage = `url(${url})`;
+            container.style.backgroundSize = 'cover';
+            container.style.backgroundPosition = 'center';
+            window.AppState.imagemFundoURL = url;
+            
+            const r = new FileReader();
+            r.onload = () => { window.AppState.imagemFundoBase64 = r.result.split(',')[1]; window.App.storage.save(); };
+            r.readAsDataURL(input.files[0]);
+            
+            if(window.AppState.arActive) { document.getElementById('arBtnText').innerText = 'Desativar Fundo Real'; }
+            else { window.App.ar.toggleAR(); }
+            
+            document.getElementById('cv-results').style.display = 'block';
+            window.CVEngine.analisarLinhas(img);
+        };
+    },
+    analisarLinhas: (img) => {
+        if (typeof cv === 'undefined') return setTimeout(() => window.CVEngine.analisarLinhas(img), 500);
+        try {
+            let mat = cv.imread(img);
+            let gray = new cv.Mat(); let edges = new cv.Mat(); let lines = new cv.Mat();
+            cv.cvtColor(mat, gray, cv.COLOR_RGBA2GRAY, 0);
+            cv.Canny(gray, edges, 50, 150, 3);
+            cv.HoughLinesP(edges, lines, 1, Math.PI / 180, 50, 50, 10);
+            
+            let detected = lines.rows;
+            mat.delete(); gray.delete(); edges.delete(); lines.delete();
+            
+            const w = img.width * 5; const d = img.height * 6; 
+            document.getElementById('cv-dimensions').innerText = `Terreno via CV: ~${w}x${d}mm (${detected} vetores)`;
+            document.getElementById('roomW').value = w; document.getElementById('roomD').value = d;
+            window.App.ar.syncRoomBounds();
+        } catch (e) { console.warn("Erro CV:", e); }
     }
 };
